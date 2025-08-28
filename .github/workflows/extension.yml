@@ -28,11 +28,26 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install maturin
-        run: pip install maturin
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      - name: Activate virtual environment and install maturin
+        run: |
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install maturin
 
       - name: Run maturin develop
-        run: maturin develop
+        run: |
+          source .venv/bin/activate
+          maturin develop
+
+      - name: Install test dependencies
+        run: |
+          source .venv/bin/activate
+          pip install pytest
 
       - name: Run Python test script
-        run: python -m pytest
+        run: |
+          source .venv/bin/activate
+          python -m pytest
