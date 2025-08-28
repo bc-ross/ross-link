@@ -10,4 +10,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.25.0"
+anyhow = "^1.0.98"
 ross-core = { path = "./ross-core" }

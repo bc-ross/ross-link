@@ -1375,6 +1375,7 @@ dependencies = [
 name = "ross-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "pyo3",
  "ross-core",
 ]
