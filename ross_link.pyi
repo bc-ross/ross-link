@@ -14,3 +14,10 @@ class Schedule:
 
     def display(self) -> None:
         """Display the schedule in a human-readable format."""
+
+    def get_courses(self) -> list[tuple[str, int | str, str]]:
+        """Get the list of semesters & courses in the schedule."""
+
+    @staticmethod
+    def get_programs() -> list[str]:
+        """Get the list of available programs."""
