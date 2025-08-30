@@ -1,11 +1,11 @@
 [package]
-name = "ross-server"
+name = "ross-link"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "ross_server"
+name = "ross_link"
 crate-type = ["cdylib"]
 
 [dependencies]

@@ -2,6 +2,7 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
 use anyhow::anyhow;
+use ross_core::schedule::CourseCodeSuffix;
 use std::path::Path;
 
 use ross_core::load_catalogs::CATALOGS;
@@ -81,10 +82,38 @@ impl Schedule {
     fn from_file(fname: String) -> PyResult<Self> {
         Ok(Schedule(WE!(read_file(&Path::new(&fname).to_path_buf()))))
     }
+
+    pub fn get_courses(&self) -> PyResult<Vec<Vec<(String, PyObject, Option<u32>)>>> {
+        let sched = &self.0;
+        let courses = Python::with_gil(|py| {
+            let mut courses = Vec::new();
+            for semester in std::iter::once(&sched.incoming).chain(sched.courses.iter()) {
+                let mut sem_courses = Vec::new();
+                for code in semester {
+                    if let Some(x) = sched.catalog.courses.get(code) {
+                        // Convert CourseCodeSuffix to PyObject based on its variant
+                        let py_suffix = match &code.code {
+                            CourseCodeSuffix::Number(num) => (*num).into_pyobject(py),
+                            CourseCodeSuffix::Special(text) => text.clone().into_pyobject(py),
+                            CourseCodeSuffix::Unique(num) => (*num).into_pyobject(py),
+                        };
+                        sem_courses.push((code.stem.to_string(), py_suffix, x.1));
+                    } else {
+                        return Err(PyRuntimeError::new_err(format!(
+                            "Course code {code} not found in catalog"
+                        )));
+                    }
+                }
+                courses.push(sem_courses);
+            }
+            Ok(courses)
+        });
+        courses
+    }
 }
 
 #[pymodule]
-fn ross_server(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn ross_link(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Schedule>()?;
     Ok(())
 }
