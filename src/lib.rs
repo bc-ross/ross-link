@@ -112,6 +112,15 @@ impl Schedule {
         });
         courses
     }
+
+    #[staticmethod]
+    fn get_programs() -> PyResult<Vec<String>> {
+        Ok(WE!(CATALOGS.first().ok_or(anyhow!("no catalogs found")))
+            .programs
+            .iter()
+            .map(|x| x.name.clone())
+            .collect())
+    }
 }
 
 #[pymodule]
