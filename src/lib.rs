@@ -92,10 +92,12 @@ impl Schedule {
                 for code in semester {
                     if let Some(x) = sched.catalog.courses.get(code) {
                         // Convert CourseCodeSuffix to PyObject based on its variant
-                        let py_suffix = match &code.code {
-                            CourseCodeSuffix::Number(num) => (*num).into_pyobject(py),
-                            CourseCodeSuffix::Special(text) => text.clone().into_pyobject(py),
-                            CourseCodeSuffix::Unique(num) => (*num).into_pyobject(py),
+                        let py_suffix: PyObject = match &code.code {
+                            CourseCodeSuffix::Number(num) => (*num).into_pyobject(py).into_py(py),
+                            CourseCodeSuffix::Special(text) => {
+                                text.clone().into_pyobject(py).into_py(py)
+                            }
+                            CourseCodeSuffix::Unique(num) => (*num).into_pyobject(py).into_py(py),
                         };
                         sem_courses.push((code.stem.to_string(), py_suffix, x.1));
                     } else {
