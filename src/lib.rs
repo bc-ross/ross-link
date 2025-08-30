@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 
 use anyhow::anyhow;
 use ross_core::schedule::CourseCodeSuffix;
+use std::collections::HashMap;
 use std::path::Path;
 
 use ross_core::load_catalogs::CATALOGS;
@@ -25,11 +26,26 @@ struct Schedule(RossSchedule);
 #[pymethods]
 impl Schedule {
     #[new]
-    fn new(programs: Vec<String>) -> PyResult<Self> {
+    fn new(programs: Vec<String>, incoming: Vec<String>) -> PyResult<Self> {
         let sched = WE!(generate_schedule(
             programs.iter().map(|x| x.as_str()).collect(),
             WE!(CATALOGS.first().ok_or(anyhow!("no catalogs found"))).clone(),
-            Some(vec![CC!("THEO", 1100)]), // None,
+            Some(
+                incoming
+                    .into_iter()
+                    .map(|x| {
+                        let parts = x.split("-").collect::<Vec<_>>();
+                        CourseCode {
+                            stem: parts[0].into(),
+                            code: if let Some(y) = parts[1].parse::<u32>().ok() {
+                                CourseCodeSuffix::Number(y.try_into().unwrap())
+                            } else {
+                                CourseCodeSuffix::Special(parts[1].into())
+                            },
+                        }
+                    })
+                    .collect()
+            )
         ));
         Ok(Schedule(sched))
     }
@@ -83,11 +99,14 @@ impl Schedule {
         Ok(Schedule(WE!(read_file(&Path::new(&fname).to_path_buf()))))
     }
 
-    pub fn get_courses(&self) -> PyResult<Vec<Vec<(String, PyObject, Option<u32>)>>> {
+    pub fn get_courses(&self) -> PyResult<HashMap<String, Vec<(String, PyObject, Option<u32>)>>> {
         let sched = &self.0;
         let courses = Python::with_gil(|py| {
-            let mut courses = Vec::new();
-            for semester in std::iter::once(&sched.incoming).chain(sched.courses.iter()) {
+            let mut courses = HashMap::new();
+            for (i, semester) in std::iter::once(&sched.incoming)
+                .chain(sched.courses.iter())
+                .enumerate()
+            {
                 let mut sem_courses = Vec::new();
                 for code in semester {
                     if let Some(x) = sched.catalog.courses.get(code) {
@@ -106,7 +125,14 @@ impl Schedule {
                         )));
                     }
                 }
-                courses.push(sem_courses);
+                courses.insert(
+                    if i > 0 {
+                        format!("semester-{i}")
+                    } else {
+                        "incoming".into()
+                    },
+                    sem_courses,
+                );
             }
             Ok(courses)
         });
