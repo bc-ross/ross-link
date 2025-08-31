@@ -3,10 +3,12 @@ use pyo3::prelude::*;
 
 use anyhow::anyhow;
 use ross_core::schedule::CourseCodeSuffix;
+use ross_core::MAX_CREDITS_PER_SEMESTER;
 use std::collections::HashMap;
 use std::path::Path;
 
 use ross_core::load_catalogs::CATALOGS;
+use ross_core::model::generate_multi_schedules;
 use ross_core::read_excel_file::read_file;
 use ross_core::schedule::generate_schedule;
 use ross_core::schedule::CourseCode;
@@ -48,6 +50,12 @@ impl Schedule {
             )
         ));
         Ok(Schedule(sched))
+    }
+
+    pub fn validate(&mut self) -> PyResult<()> {
+        let sched = &mut self.0;
+        WE!(sched.validate());
+        Ok(())
     }
 
     pub fn is_valid(&self) -> PyResult<bool> {
@@ -146,6 +154,42 @@ impl Schedule {
             .iter()
             .map(|x| x.name.clone())
             .collect())
+    }
+
+    #[staticmethod]
+    fn gen_valid_options(
+        programs: Vec<String>,
+        incoming: Vec<String>,
+        options: u64,
+    ) -> PyResult<Vec<Self>> {
+        let sched = WE!(generate_schedule(
+            programs.iter().map(|x| x.as_str()).collect(),
+            WE!(CATALOGS.first().ok_or(anyhow!("no catalogs found"))).clone(),
+            Some(
+                incoming
+                    .into_iter()
+                    .map(|x| {
+                        let parts = x.split("-").collect::<Vec<_>>();
+                        CourseCode {
+                            stem: parts[0].into(),
+                            code: if let Some(y) = parts[1].parse::<u32>().ok() {
+                                CourseCodeSuffix::Number(y.try_into().unwrap())
+                            } else {
+                                CourseCodeSuffix::Special(parts[1].into())
+                            },
+                        }
+                    })
+                    .collect()
+            )
+        ));
+        Ok(WE!(generate_multi_schedules(
+            sched,
+            MAX_CREDITS_PER_SEMESTER,
+            options
+        ))
+        .into_iter()
+        .map(Schedule)
+        .collect())
     }
 }
 
