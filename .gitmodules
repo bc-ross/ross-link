@@ -1,3 +1,3 @@
 [submodule "ross-core"]
-	path = ross-core
-	url = https://jpkline@github.com/bc-ross/ross-core.git
+path = ross-core
+url = https://github.com/bc-ross/ross-core.git
