@@ -191,6 +191,57 @@ impl Schedule {
         .map(Schedule)
         .collect())
     }
+
+    pub fn get_reasons(&self) -> PyResult<HashMap<String, Vec<HashMap<String, String>>>> {
+        Ok(WE!(self.0.get_reasons())
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k.to_string(),
+                    v.into_iter()
+                        .map(|r| {
+                            let mut map = HashMap::new();
+                            match r {
+                                ross_core::transparency::CourseReasons::Core { name } => {
+                                    map.insert("type".into(), "Core".into());
+                                    map.insert("name".into(), name);
+                                }
+                                ross_core::transparency::CourseReasons::Foundation { name } => {
+                                    map.insert("type".into(), "Foundation".into());
+                                    map.insert("name".into(), name);
+                                }
+                                ross_core::transparency::CourseReasons::SkillsAndPerspective {
+                                    name,
+                                } => {
+                                    map.insert("type".into(), "SkillsAndPerspective".into());
+                                    map.insert("name".into(), name);
+                                }
+                                ross_core::transparency::CourseReasons::ProgramRequired {
+                                    prog,
+                                } => {
+                                    map.insert("type".into(), "ProgramRequired".into());
+                                    map.insert("program".into(), prog);
+                                }
+                                ross_core::transparency::CourseReasons::ProgramElective {
+                                    prog,
+                                    name,
+                                } => {
+                                    map.insert("type".into(), "ProgramElective".into());
+                                    map.insert("program".into(), prog);
+                                    map.insert("name".into(), name);
+                                }
+                                ross_core::transparency::CourseReasons::CourseReq { course } => {
+                                    map.insert("type".into(), "CourseReq".into());
+                                    map.insert("course".into(), course.to_string());
+                                }
+                            }
+                            map
+                        })
+                        .collect(),
+                )
+            })
+            .collect())
+    }
 }
 
 #[pymodule]

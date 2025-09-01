@@ -11,3 +11,10 @@ def test_schedule():
     sched.save("ross_pytest.xlsx")
     sched2 = ross_link.Schedule.from_file("ross_pytest.xlsx")
     assert sched2.is_valid()
+
+
+def test_reasons():
+    sched = ross_link.Schedule(["BA Physics", "BA Chemistry"], ["THEO-1100"])
+    sched.validate()
+    assert sched.is_valid()
+    print(sched.get_reasons())

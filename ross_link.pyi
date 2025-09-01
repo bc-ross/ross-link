@@ -21,3 +21,6 @@ class Schedule:
     @staticmethod
     def get_programs() -> list[str]:
         """Get the list of available programs."""
+
+    def get_reasons() -> dict[str, list[dict[str, str]]]:
+        """Get the reason(s) for every course's inclusion in the schedule."""
