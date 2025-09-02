@@ -35,7 +35,7 @@ def test_course_reasons():
     example = sub_test()
     print(example)
     print(
-        sched.get_courses_for_reason(
+        sched.get_other_courses(
             getattr(ross_link.ReasonTypes, example["type"]), name=example.get("name"), prog=example.get("prog")
         )
     )

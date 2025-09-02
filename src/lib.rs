@@ -6,6 +6,8 @@ use ross_core::MAX_CREDITS_PER_SEMESTER;
 use ross_core::geneds::GenEd;
 use ross_core::schedule::CourseCodeSuffix;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::hash::Hash;
 use std::path::Path;
 
 use ross_core::CC;
@@ -64,116 +66,131 @@ impl Schedule {
     }
 
     #[pyo3(signature = (reason, *, name=None, prog=None))]
-    pub fn get_courses_for_reason(
+    pub fn get_other_courses(
         &self,
         reason: ReasonTypes,
         name: Option<String>,
         prog: Option<String>,
     ) -> PyResult<Vec<String>> {
-        Ok(match reason {
-            ReasonTypes::Core => {
-                if let Some(n) = name {
-                    self.0
-                        .catalog
-                        .geneds
-                        .iter()
-                        .filter_map(|x| {
-                            if let GenEd::Core { name, req } = x {
-                                if name == &n {
-                                    return Some(req.all_course_codes());
-                                }
-                            }
-                            None
-                        })
-                        .flatten()
-                        .map(|c| c.to_string())
-                        .collect()
-                } else {
-                    return Err(PyRuntimeError::new_err(
-                        "Name must be provided for Core reason type",
-                    ));
-                }
-            }
-            ReasonTypes::Foundation => {
-                if let Some(n) = name {
-                    self.0
-                        .catalog
-                        .geneds
-                        .iter()
-                        .filter_map(|x| {
-                            if let GenEd::Foundation { name, req } = x {
-                                if name == &n {
-                                    return Some(req.all_course_codes());
-                                }
-                            }
-                            None
-                        })
-                        .flatten()
-                        .map(|c| c.to_string())
-                        .collect()
-                } else {
-                    return Err(PyRuntimeError::new_err(
-                        "Name must be provided for Core reason type",
-                    ));
-                }
-            }
-            ReasonTypes::SkillsAndPerspective => {
-                if let Some(n) = name {
-                    self.0
-                        .catalog
-                        .geneds
-                        .iter()
-                        .filter_map(|x| {
-                            if let GenEd::SkillAndPerspective { name, req } = x {
-                                if name == &n {
-                                    return Some(req.all_course_codes());
-                                }
-                            }
-                            None
-                        })
-                        .flatten()
-                        .map(|c| c.to_string())
-                        .collect()
-                } else {
-                    return Err(PyRuntimeError::new_err(
-                        "Name must be provided for Core reason type",
-                    ));
-                }
-            }
-            ReasonTypes::ProgramRequired => vec![],
-            ReasonTypes::ProgramElective => {
-                if let Some(n) = name
-                    && let Some(p) = prog
-                {
-                    self.0
-                        .catalog
-                        .programs
-                        .iter()
-                        .filter(|x| x.name == p)
-                        .map(|x| {
-                            x.electives
-                                .iter()
-                                .filter_map(|e| {
-                                    if e.name == n {
-                                        Some(e.req.all_course_codes())
-                                    } else {
-                                        None
+        Ok(HashSet::from_iter(
+            match reason {
+                ReasonTypes::Core => {
+                    if let Some(n) = name {
+                        self.0
+                            .catalog
+                            .geneds
+                            .iter()
+                            .filter_map(|x| {
+                                if let GenEd::Core { name, req } = x {
+                                    if name == &n {
+                                        return Some(req.all_course_codes());
                                     }
-                                })
-                                .flatten()
-                                .map(|c| c.to_string())
-                                .collect::<Vec<_>>()
-                        })
-                        .flatten()
-                        .collect()
-                } else {
-                    return Err(PyRuntimeError::new_err(
-                        "Name and Program must be provided for ProgramElective reason type",
-                    ));
+                                }
+                                None
+                            })
+                            .flatten()
+                            .map(|c| c.to_string())
+                            .collect()
+                    } else {
+                        return Err(PyRuntimeError::new_err(
+                            "Name must be provided for Core reason type",
+                        ));
+                    }
                 }
+                ReasonTypes::Foundation => {
+                    if let Some(n) = name {
+                        self.0
+                            .catalog
+                            .geneds
+                            .iter()
+                            .filter_map(|x| {
+                                if let GenEd::Foundation { name, req } = x {
+                                    if name == &n {
+                                        return Some(req.all_course_codes());
+                                    }
+                                }
+                                None
+                            })
+                            .flatten()
+                            .map(|c| c.to_string())
+                            .collect()
+                    } else {
+                        return Err(PyRuntimeError::new_err(
+                            "Name must be provided for Core reason type",
+                        ));
+                    }
+                }
+                ReasonTypes::SkillsAndPerspective => {
+                    if let Some(n) = name {
+                        self.0
+                            .catalog
+                            .geneds
+                            .iter()
+                            .filter_map(|x| {
+                                if let GenEd::SkillAndPerspective { name, req } = x {
+                                    if name == &n {
+                                        return Some(req.all_course_codes());
+                                    }
+                                }
+                                None
+                            })
+                            .flatten()
+                            .map(|c| c.to_string())
+                            .collect()
+                    } else {
+                        return Err(PyRuntimeError::new_err(
+                            "Name must be provided for Core reason type",
+                        ));
+                    }
+                }
+                ReasonTypes::ProgramRequired => vec![],
+                ReasonTypes::ProgramElective => {
+                    if let Some(n) = name
+                        && let Some(p) = prog
+                    {
+                        self.0
+                            .catalog
+                            .programs
+                            .iter()
+                            .filter(|x| x.name == p)
+                            .map(|x| {
+                                x.electives
+                                    .iter()
+                                    .filter_map(|e| {
+                                        if e.name == n {
+                                            Some(e.req.all_course_codes())
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .flatten()
+                                    .map(|c| c.to_string())
+                                    .collect::<Vec<_>>()
+                            })
+                            .flatten()
+                            .collect()
+                    } else {
+                        return Err(PyRuntimeError::new_err(
+                            "Name and Program must be provided for ProgramElective reason type",
+                        ));
+                    }
+                }
+                ReasonTypes::CourseReq => vec![],
             }
-            ReasonTypes::CourseReq => vec![],
-        })
+            .into_iter(),
+        )
+        .difference(
+            &self
+                .0
+                .incoming
+                .iter()
+                .chain(self.0.courses.iter().flatten())
+                .map(|c| c.to_string())
+                .collect::<HashSet<_>>(),
+        )
+        .into_iter()
+        .map(|x| x.to_string())
+        .collect())
     }
 
     pub fn validate(&mut self) -> PyResult<()> {

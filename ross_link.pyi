@@ -35,7 +35,7 @@ class Schedule:
     def get_reasons(self) -> dict[str, list[dict[str, str]]]:
         """Get the reason(s) for every course's inclusion in the schedule."""
 
-    def get_courses_for_reason(
+    def get_other_courses(
         self, reason: "ReasonTypes", *, name: str | None = None, prog: str | None = None
     ) -> list[str]:
         """Get the list of courses which would satisfy a given reason."""
