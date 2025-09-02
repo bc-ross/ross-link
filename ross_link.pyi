@@ -16,6 +16,9 @@ class Schedule:
     def from_file(filename: str) -> "Schedule":
         """Load a schedule from an Excel file."""
 
+    def validate(self) -> None:
+        """Run the schedule through a solver and add minimum number of courses to make it valid."""
+
     def is_valid(self) -> bool:
         """Check if the schedule is valid."""
 
