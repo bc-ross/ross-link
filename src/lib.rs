@@ -2,24 +2,36 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
 use anyhow::anyhow;
-use ross_core::schedule::CourseCodeSuffix;
 use ross_core::MAX_CREDITS_PER_SEMESTER;
+use ross_core::geneds::GenEd;
+use ross_core::schedule::CourseCodeSuffix;
 use std::collections::HashMap;
 use std::path::Path;
 
+use ross_core::CC;
 use ross_core::load_catalogs::CATALOGS;
 use ross_core::model::generate_multi_schedules;
 use ross_core::read_excel_file::read_file;
-use ross_core::schedule::generate_schedule;
 use ross_core::schedule::CourseCode;
 use ross_core::schedule::Schedule as RossSchedule;
+use ross_core::schedule::generate_schedule;
 use ross_core::write_excel_file::save_schedule;
-use ross_core::CC;
 
 macro_rules! WE {
     ($x:expr) => {
         $x.map_err(|e| PyRuntimeError::new_err(format!("Rust error: {}", e)))?
     };
+}
+
+#[pyclass(eq, eq_int)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+enum ReasonTypes {
+    Core,
+    Foundation,
+    SkillsAndPerspective,
+    ProgramRequired,
+    ProgramElective,
+    CourseReq,
 }
 
 #[pyclass]
@@ -28,28 +40,140 @@ struct Schedule(RossSchedule);
 #[pymethods]
 impl Schedule {
     #[new]
-    fn new(programs: Vec<String>, incoming: Vec<String>) -> PyResult<Self> {
+    #[pyo3(signature = (programs, incoming=None))]
+    fn new(programs: Vec<String>, incoming: Option<Vec<String>>) -> PyResult<Self> {
         let sched = WE!(generate_schedule(
             programs.iter().map(|x| x.as_str()).collect(),
             WE!(CATALOGS.first().ok_or(anyhow!("no catalogs found"))).clone(),
-            Some(
-                incoming
-                    .into_iter()
-                    .map(|x| {
-                        let parts = x.split("-").collect::<Vec<_>>();
-                        CourseCode {
-                            stem: parts[0].into(),
-                            code: if let Some(y) = parts[1].parse::<u32>().ok() {
-                                CourseCodeSuffix::Number(y.try_into().unwrap())
-                            } else {
-                                CourseCodeSuffix::Special(parts[1].into())
-                            },
-                        }
-                    })
-                    .collect()
-            )
+            incoming.map(|v| v
+                .into_iter()
+                .map(|x| {
+                    let parts = x.split("-").collect::<Vec<_>>();
+                    CourseCode {
+                        stem: parts[0].into(),
+                        code: if let Some(y) = parts[1].parse::<u32>().ok() {
+                            CourseCodeSuffix::Number(y.try_into().unwrap())
+                        } else {
+                            CourseCodeSuffix::Special(parts[1].into())
+                        },
+                    }
+                })
+                .collect())
         ));
         Ok(Schedule(sched))
+    }
+
+    #[pyo3(signature = (reason, *, name=None, prog=None))]
+    pub fn get_courses_for_reason(
+        &self,
+        reason: ReasonTypes,
+        name: Option<String>,
+        prog: Option<String>,
+    ) -> PyResult<Vec<String>> {
+        Ok(match reason {
+            ReasonTypes::Core => {
+                if let Some(n) = name {
+                    self.0
+                        .catalog
+                        .geneds
+                        .iter()
+                        .filter_map(|x| {
+                            if let GenEd::Core { name, req } = x {
+                                if name == &n {
+                                    return Some(req.all_course_codes());
+                                }
+                            }
+                            None
+                        })
+                        .flatten()
+                        .map(|c| c.to_string())
+                        .collect()
+                } else {
+                    return Err(PyRuntimeError::new_err(
+                        "Name must be provided for Core reason type",
+                    ));
+                }
+            }
+            ReasonTypes::Foundation => {
+                if let Some(n) = name {
+                    self.0
+                        .catalog
+                        .geneds
+                        .iter()
+                        .filter_map(|x| {
+                            if let GenEd::Foundation { name, req } = x {
+                                if name == &n {
+                                    return Some(req.all_course_codes());
+                                }
+                            }
+                            None
+                        })
+                        .flatten()
+                        .map(|c| c.to_string())
+                        .collect()
+                } else {
+                    return Err(PyRuntimeError::new_err(
+                        "Name must be provided for Core reason type",
+                    ));
+                }
+            }
+            ReasonTypes::SkillsAndPerspective => {
+                if let Some(n) = name {
+                    self.0
+                        .catalog
+                        .geneds
+                        .iter()
+                        .filter_map(|x| {
+                            if let GenEd::SkillAndPerspective { name, req } = x {
+                                if name == &n {
+                                    return Some(req.all_course_codes());
+                                }
+                            }
+                            None
+                        })
+                        .flatten()
+                        .map(|c| c.to_string())
+                        .collect()
+                } else {
+                    return Err(PyRuntimeError::new_err(
+                        "Name must be provided for Core reason type",
+                    ));
+                }
+            }
+            ReasonTypes::ProgramRequired => vec![],
+            ReasonTypes::ProgramElective => {
+                if let Some(n) = name
+                    && let Some(p) = prog
+                {
+                    self.0
+                        .catalog
+                        .programs
+                        .iter()
+                        .filter(|x| x.name == p)
+                        .map(|x| {
+                            x.electives
+                                .iter()
+                                .filter_map(|e| {
+                                    if e.name == n {
+                                        Some(e.req.all_course_codes())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .flatten()
+                                .map(|c| c.to_string())
+                                .collect::<Vec<_>>()
+                        })
+                        .flatten()
+                        .collect()
+                } else {
+                    return Err(PyRuntimeError::new_err(
+                        "Name and Program must be provided for ProgramElective reason type",
+                    ));
+                }
+            }
+            ReasonTypes::CourseReq => vec![],
+        })
     }
 
     pub fn validate(&mut self) -> PyResult<()> {
@@ -247,5 +371,6 @@ impl Schedule {
 #[pymodule]
 fn ross_link(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Schedule>()?;
+    m.add_class::<ReasonTypes>()?;
     Ok(())
 }
