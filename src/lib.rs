@@ -2,9 +2,12 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
 use anyhow::anyhow;
+use pyo3::types::PyBytes;
 use ross_core::MAX_CREDITS_PER_SEMESTER;
 use ross_core::geneds::GenEd;
+use ross_core::read_excel_file::read_vec;
 use ross_core::schedule::CourseCodeSuffix;
+use ross_core::write_excel_file::export_schedule;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
@@ -382,6 +385,17 @@ impl Schedule {
                 )
             })
             .collect())
+    }
+
+    pub fn to_excel_bytes(&self) -> PyResult<PyObject> {
+        let bytes = WE!(export_schedule(&self.0));
+        Python::with_gil(|py| Ok(PyBytes::new(py, &bytes).into()))
+    }
+
+    #[staticmethod]
+    fn from_excel_bytes(buf: &[u8]) -> PyResult<Self> {
+        let sched = WE!(read_vec(buf));
+        Ok(Self(sched))
     }
 }
 

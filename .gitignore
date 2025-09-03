@@ -2,3 +2,5 @@
 *.xlsx
 *.csv
 __pycache__
+
+.vscode/settings.json
