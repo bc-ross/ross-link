@@ -42,6 +42,18 @@ enum ReasonTypes {
 #[pyclass]
 struct Schedule(RossSchedule);
 
+fn str_to_cc(x: &str) -> CourseCode {
+    let parts = x.split("-").collect::<Vec<_>>();
+    CourseCode {
+        stem: parts[0].into(),
+        code: if let Some(y) = parts[1].parse::<u32>().ok() {
+            CourseCodeSuffix::Number(y.try_into().unwrap())
+        } else {
+            CourseCodeSuffix::Special(parts[1].into())
+        },
+    }
+}
+
 #[pymethods]
 impl Schedule {
     #[new]
@@ -50,20 +62,7 @@ impl Schedule {
         let sched = WE!(generate_schedule(
             programs.iter().map(|x| x.as_str()).collect(),
             WE!(CATALOGS.first().ok_or(anyhow!("no catalogs found"))).clone(),
-            incoming.map(|v| v
-                .into_iter()
-                .map(|x| {
-                    let parts = x.split("-").collect::<Vec<_>>();
-                    CourseCode {
-                        stem: parts[0].into(),
-                        code: if let Some(y) = parts[1].parse::<u32>().ok() {
-                            CourseCodeSuffix::Number(y.try_into().unwrap())
-                        } else {
-                            CourseCodeSuffix::Special(parts[1].into())
-                        },
-                    }
-                })
-                .collect())
+            incoming.map(|v| v.into_iter().map(|x| str_to_cc(&x)).collect())
         ));
         Ok(Schedule(sched))
     }
@@ -396,6 +395,22 @@ impl Schedule {
     fn from_excel_bytes(buf: &[u8]) -> PyResult<Self> {
         let sched = WE!(read_vec(buf));
         Ok(Self(sched))
+    }
+
+    #[pyo3(signature = (semesters, incoming=None))]
+    pub fn swap_courses(
+        &mut self,
+        semesters: Vec<Vec<String>>,
+        incoming: Option<Vec<String>>,
+    ) -> PyResult<()> {
+        self.0.courses = semesters
+            .into_iter()
+            .map(|sem| sem.into_iter().map(|x| str_to_cc(&x)).collect())
+            .collect();
+        if let Some(inc) = incoming {
+            self.0.incoming = inc.into_iter().map(|x| str_to_cc(&x)).collect();
+        }
+        Ok(())
     }
 }
 
