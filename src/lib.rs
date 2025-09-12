@@ -39,7 +39,7 @@ enum ReasonTypes {
     CourseReq,
 }
 
-#[pyclass]
+#[pyclass(subclass)]
 struct Schedule(RossSchedule);
 
 fn str_to_cc(x: &str) -> CourseCode {
@@ -62,7 +62,8 @@ impl Schedule {
         let sched = WE!(generate_schedule(
             programs.iter().map(|x| x.as_str()).collect(),
             WE!(CATALOGS.first().ok_or(anyhow!("no catalogs found"))).clone(),
-            incoming.map(|v| v.into_iter().map(|x| str_to_cc(&x)).collect())
+            incoming.map(|v| v.into_iter().map(|x| str_to_cc(&x)).collect()),
+            None
         ));
         Ok(Schedule(sched))
     }
@@ -323,7 +324,8 @@ impl Schedule {
                         }
                     })
                     .collect()
-            )
+            ),
+            None,
         ));
         Ok(WE!(generate_multi_schedules(
             sched,
