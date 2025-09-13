@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .ross_link import *
 
 __doc__ = ross_link.__doc__
@@ -6,8 +8,22 @@ if hasattr(ross_link, "__all__"):
 
 
 class Schedule(ross_link.Schedule):
-    def test_me(self):
-        print("Hello from subclass!")
+    @staticmethod
+    def with_courses(
+        programs: list[str], incoming: list[str] | None = None, courses: dict[str, list[str]] | None = None
+    ) -> Schedule:
+        semesters = {}
+        summers = {}
+        non_term = None
+        if courses is not None:
+            for course in courses:
+                if "semester-" in course:
+                    semesters[course[len("semester-") :]] = courses[course]
+                if "summer-" in course:
+                    summers[course[len("summer-") :]] = courses[course]
+                if "non-term" == course:
+                    non_term = courses[course]
+        print(semesters, summers, non_term)
 
 
 def test():

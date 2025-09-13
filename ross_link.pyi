@@ -42,3 +42,9 @@ class Schedule:
         self, reason: "ReasonTypes", *, name: str | None = None, prog: str | None = None
     ) -> list[str]:
         """Get the list of courses which would satisfy a given reason."""
+
+    @staticmethod
+    def with_courses(
+        programs: list[str], incoming: list[str] | None = None, courses: list[dict[str, list[str]]] | None = None
+    ) -> "Schedule":
+        """Create a schedule with the given courses forced to be included."""
