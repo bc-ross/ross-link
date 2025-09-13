@@ -15,6 +15,7 @@ class Schedule(ross_link.Schedule):
         semesters = {}
         summers = {}
         non_term = None
+        incoming = incoming or []
         if courses is not None:
             for course in courses:
                 if "semester-" in course:
@@ -23,8 +24,6 @@ class Schedule(ross_link.Schedule):
                     summers[course[len("summer-") :]] = courses[course]
                 if "non-term" == course:
                     non_term = courses[course]
-        print(semesters, summers, non_term)
-
-
-def test():
-    print("Hey!")
+        semesters_sorted = list(dict(sorted(semesters.items())).values())
+        incoming += non_term or []
+        return ross_link.Schedule._with_courses(programs, incoming, semesters_sorted)

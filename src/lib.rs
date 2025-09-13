@@ -68,6 +68,25 @@ impl Schedule {
         Ok(Schedule(sched))
     }
 
+    #[staticmethod]
+    #[pyo3(signature = (programs, incoming=None, courses=None))]
+    pub fn _with_courses(
+        programs: Vec<String>,
+        incoming: Option<Vec<String>>,
+        courses: Option<Vec<Vec<String>>>,
+    ) -> PyResult<Self> {
+        let sched = WE!(generate_schedule(
+            programs.iter().map(|x| x.as_str()).collect(),
+            WE!(CATALOGS.first().ok_or(anyhow!("no catalogs found"))).clone(),
+            incoming.map(|v| v.into_iter().map(|x| str_to_cc(&x)).collect()),
+            courses.map(|x| x
+                .into_iter()
+                .map(|v| v.into_iter().map(|x| str_to_cc(&x)).collect())
+                .collect()),
+        ));
+        Ok(Schedule(sched))
+    }
+
     #[pyo3(signature = (reason, *, name=None, prog=None))]
     pub fn get_other_courses(
         &self,
